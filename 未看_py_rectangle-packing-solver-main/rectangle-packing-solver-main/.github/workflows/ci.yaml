@@ -1,0 +1,115 @@
+name: Continuous Integration
+
+on: [push]
+
+jobs:
+  formatter-linter-checker:
+    name: 'Format, lint, and check codes'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ".[dev]"
+    - name: black (formatter)
+      run: black . --check --diff
+    - name: isort (formatter)
+      run: isort . --check-only --diff
+    - name: flake8 (linter)
+      run: flake8 . --statistics --count --show-source
+    - name: mypy (type checker)
+      run: mypy
+
+  unit-tests:
+    name: 'Run unit tests'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: [3.7, 3.8, 3.9]
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON: ${{ matrix.python-version }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ".[dev]"
+    - name: Test rectangle-packing-solver package installation
+      run: python -c 'import rectangle_packing_solver'
+    - name: List installed packages
+      run: pip list
+    - name: Run unit tests
+      run: pytest --verbose
+
+  codecov:
+    name: 'Send test coverage reports to Codecov'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies with --editable
+      run: |
+        python -m pip install --upgrade pip
+        pip install --editable ".[dev]"
+    - name: Run unit tests
+      run: pytest --verbose --cov=./ --cov-report=xml
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        env_vars: OS,PYTHON
+        name: codecov-umbrella
+        fail_ci_if_error: true
+
+  examples:
+    name: 'Run examples'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: [3.7, 3.8, 3.9]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+    - name: Test rectangle-packing-solver package installation
+      run: python -c 'import rectangle_packing_solver'
+    - name: List installed packages
+      run: pip list
+
+    # example
+    - name: Run example/example.py
+      run: python example/example.py
+    - name: Run example/example_large.py
+      run: python example/example_large.py
+
+    # benchmark
+    - name: Run example/benchmark.py
+      run: python example/benchmark.py
